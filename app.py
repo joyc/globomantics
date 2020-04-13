@@ -1,12 +1,37 @@
-from flask import Flask, render_template, request, redirect, url_for, g
+from flask import Flask, render_template, request, redirect, url_for, g, flash
 import sqlite3
 import pdb
 
 app = Flask(__name__)
+app.config["SECRET_KEY"] = "secretkey"
 
 @app.route("/")
 def home():
-    return render_template("home.html")
+    conn = get_db()
+    c = conn.cursor()
+
+    items_from_db = c.execute("""SELECT
+                    i.id, i.title, i.description, i.price, i.image, c.name, s.name
+                    FROM
+                    items AS i
+                    INNER JOIN categories AS c ON i.category_id = c.id
+                    INNER JOIN subcategories AS s ON i.subcategory_id  = s.id
+                    ORDER BY i.id DESC
+    """)
+    items = []
+    for row in items_from_db:
+        item = {
+            "id": row[0],
+            "title": row[1],
+            "description": row[2],
+            "price": row[3],
+            "image": row[4],
+            "category": row[5],
+            "subcategory": row[6]
+        }
+        items.append(item)
+
+    return render_template("home.html", items=items)
 
 # @app.route("/static/<filename>")
 # def static(filename):
@@ -38,6 +63,7 @@ def new_item():
         )
         conn.commit()
         # Redirect to top page
+        flash("Item {} has been successfully submitted".format(request.form.get("title")), "success")
         return redirect(url_for("home"))
 
     return render_template("new_item.html")
