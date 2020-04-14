@@ -34,7 +34,7 @@
                     <div class="card h-100">
                         <div class="embed-responsive embed-responsive-16by9">
                             <a href="{{ url_for('item', item_id=item.id) }}">
-                                <img class="card-img-top embed-responsive-item" src="{{ url_for('static', filename='images/placeholder.png') }}">
+                                <img class="card-img-top embed-responsive-item" src="{% if item.image %}{{ url_for('uploads', filename=item.image) }}{% else %}{{ url_for('static', filename='images/placeholder.png') }}{% endif %}" alt="">
                             </a>
                         </div>
                         <div class="card-body">

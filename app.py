@@ -1,10 +1,16 @@
-from flask import Flask, render_template, request, redirect, url_for, g, flash
+from flask import Flask, send_from_directory, render_template, request, redirect, url_for, g, flash
 from flask_wtf import FlaskForm
-from flask_wtf.file import FileAllowed
+from flask_wtf.file import FileAllowed, FileRequired
 from wtforms import FileField, StringField, TextAreaField, SubmitField, SelectField, DecimalField
 from wtforms.validators import InputRequired, DataRequired, Length
+from werkzeug.utils import secure_filename
 import pdb
 import sqlite3
+import os
+import datetime
+from secrets import token_hex
+
+basedir = os.path.abspath(os.path.dirname(__file__))
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "secretkey"
@@ -21,7 +27,7 @@ class ItemForm(FlaskForm):
     description = TextAreaField("Description", validators=[InputRequired("Input is required!"), 
                             DataRequired("Data is required!"), 
                             Length(min=5, max=40, message="Input must be between 5 and 40 characters long")])
-    image       = FileField("Image", validators=[FileAllowed(app.config["ALLOWED_IMAGE_EXTENSIONS"], "Images only!")])
+    image       = FileField("Image", validators=[FileRequired(), FileAllowed(app.config["ALLOWED_IMAGE_EXTENSIONS"], "Images only!")])
 
 class NewItemForm(ItemForm):
     category    = SelectField("Category", coerce=int)
@@ -224,6 +230,9 @@ def edit_item(item_id):
         return render_template("edit_item.html", item=item, form=form)
     return redirect(url_for("home"))
 
+@app.route("/uploads/<filename>")
+def uploads(filename):
+    return send_from_directory(app.config["IMAGE_UPLOADS"], filename)
 
 @app.route("/item/new", methods=["GET", "POST"])
 def new_item():
@@ -245,6 +254,14 @@ def new_item():
 
     # pdb.set_trace()
     if form.validate_on_submit():
+
+        format = "%Y%m%dT%H%M%S"
+        now = datetime.datetime.utcnow().strftime(format)
+        random_string = token_hex(2)
+        filename = random_string + "_" + now + "_" + form.image.data.filename
+        filename = secure_filename(filename)
+        form.image.data.save(os.path.join(app.config["IMAGE_UPLOADS"], filename))
+
         # Process the from data
         # print("From data:")
         # print("Title: {}, Description: {}".format(
@@ -257,7 +274,7 @@ def new_item():
                             form.title.data,
                             form.description.data,
                             float(form.price.data),
-                            "",
+                            filename,
                             form.category.data,
                             form.subcategory.data
                         )

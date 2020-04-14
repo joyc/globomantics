@@ -14,7 +14,7 @@
     <div class="col-lg-9">
         <div class="card mt-4">
             <div class="embed-responsive embed-responsive-16by9">
-                <img src="{{ url_for('static', filename='images/placeholder.png') }}" alt="" class="card-img-top embed-responsive-item">
+                <img src="{% if item.image %}{{ url_for('uploads', filename=item.image) }}{% else %}{{ url_for('static', filename='images/placeholder.png') }}{% endif %}" alt="" class="card-img-top embed-responsive-item">
             </div>
             <div class="card-body">
                 <h3 class="card-title">{{ item.title }}</h3>
