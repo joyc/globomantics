@@ -8,19 +8,19 @@
         <h1>Add new item</h1><hr>
         <form method="POST" action="{{ url_for('new_item') }}">
             <div class="form-group">
-                <label>Title</label>
-                <input class="form-control" type="text" name="title">
+                {{ form.title.label }}
+                {{ form.title(class="form-control") }}
             </div>
             <div class="form-group">
-                <label>Price</label>
-                <input class="form-control" type="text" name="price">
+                {{ form.price.label }}
+                {{ form.price(class="form-control") }}
             </div>
             <div class="form-group">
-                <label>Description</label>
-                <textarea class="form-control" name="description" rows="3"></textarea>
+                {{ form.description.label }}
+                {{ form.description(class="form-control", rows="3") }}
             </div>
             <hr>
-            <input class="btn btn-primary form-control" type="submit" value="Submit">
+            {{ form.submit(class="btn btn-primary form-control") }}
         </form>
     </div>
 </div>
