@@ -1,12 +1,16 @@
 from flask import Flask, render_template, request, redirect, url_for, g, flash
 from flask_wtf import FlaskForm
-from wtforms import StringField, TextAreaField, SubmitField, SelectField, DecimalField
+from flask_wtf.file import FileAllowed
+from wtforms import FileField, StringField, TextAreaField, SubmitField, SelectField, DecimalField
 from wtforms.validators import InputRequired, DataRequired, Length
 import pdb
 import sqlite3
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "secretkey"
+app.config["ALLOWED_IMAGE_EXTENSIONS"] = ["jpeg", "jpg", "png"]
+app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
+app.config["IMAGE_UPLOADS"] = os.path.join(basedir, "uploads")
 
 
 class ItemForm(FlaskForm):
@@ -17,6 +21,7 @@ class ItemForm(FlaskForm):
     description = TextAreaField("Description", validators=[InputRequired("Input is required!"), 
                             DataRequired("Data is required!"), 
                             Length(min=5, max=40, message="Input must be between 5 and 40 characters long")])
+    image       = FileField("Image", validators=[FileAllowed(app.config["ALLOWED_IMAGE_EXTENSIONS"], "Images only!")])
 
 class NewItemForm(ItemForm):
     category    = SelectField("Category", coerce=int)
@@ -29,20 +34,74 @@ class EditItemForm(ItemForm):
 class DeleteItemForm(FlaskForm):
     submit      = SubmitField("Delete item")
 
+class FilterForm(FlaskForm):
+    title       = StringField("Title", validators=[Length(max=20)])
+    price       = SelectField("Price", coerce=int, choices=[(0, "---"), (1, "Max to Min"), (2, "Min to Max")])
+    category    = SelectField("Category", coerce=int)
+    subcategory = SelectField("Subcategory", coerce=int)
+    submit      = SubmitField("Filter")
+
 
 @app.route("/")
 def home():
     conn = get_db()
     c = conn.cursor()
 
-    items_from_db = c.execute("""SELECT
-                    i.id, i.title, i.description, i.price, i.image, c.name, s.name
-                    FROM
-                    items AS i
-                    INNER JOIN categories AS c ON i.category_id = c.id
-                    INNER JOIN subcategories AS s ON i.subcategory_id  = s.id
-                    ORDER BY i.id DESC
-    """)
+    form = FilterForm(request.args, meta={"csrf": False})
+
+    c.execute("SELECT id, name FROM categories")
+    categories = c.fetchall()
+    categories.insert(0, (0, "---"))
+    form.category.choices = categories
+
+    c.execute("SELECT id, name FROM subcategories WHERE category_id = ?", (1,))
+    subcategories = c.fetchall()
+    subcategories.insert(0, (0, "---"))
+    form.subcategory.choices = subcategories
+
+    query = """
+            SELECT 
+            i.id, i.title, i.description, i.price, i.image, c.name, s.name
+            FROM
+            items AS i
+            INNER JOIN categories AS c ON i.category_id = c.id
+            INNER JOIN subcategories AS s ON i.subcategory_id  = s.id
+    """
+
+    if form.validate():
+
+        filter_queries = []
+        parameters = []
+
+        if form.title.data.strip():
+            filter_queries.append("i.title LIKE ?")
+            parameters.append("%" + form.title.data + "%")
+        
+        if form.category.data:
+            filter_queries.append("i.category_id = ?")
+            parameters.append(form.category.data)
+
+        if form.subcategory.data:
+            filter_queries.append("i.subcategory_id = ?")
+            parameters.append(form.subcategory.data)
+
+        if filter_queries:
+            query += " WHERE "
+            query += " AND ".join(filter_queries)
+
+        if form.price.data:
+            if form.price.data == 1:
+                query += " ORDER BY i.price DESC"
+            else:
+                query += " ORDER BY i.price"
+        else:
+            query += " ORDER BY i.id DESC"
+
+        items_from_db = c.execute(query, tuple(parameters))
+        # print(query)
+    else:
+        items_from_db = c.execute( query + "ORDER BY i.id DESC")
+
     items = []
     for row in items_from_db:
         item = {
@@ -56,7 +115,7 @@ def home():
         }
         items.append(item)
 
-    return render_template("home.html", items=items)
+    return render_template("home.html", items=items, form=form)
 
 # @app.route("/static/<filename>")
 # def static(filename):
