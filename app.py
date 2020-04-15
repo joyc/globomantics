@@ -2,7 +2,7 @@ from flask import Flask, send_from_directory, render_template, request, redirect
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileAllowed, FileRequired
 from wtforms import FileField, StringField, TextAreaField, SubmitField, SelectField, DecimalField
-from wtforms.validators import InputRequired, DataRequired, Length
+from wtforms.validators import InputRequired, DataRequired, Length, ValidationError
 from werkzeug.utils import secure_filename
 import pdb
 import sqlite3
@@ -29,9 +29,67 @@ class ItemForm(FlaskForm):
                             Length(min=5, max=40, message="Input must be between 5 and 40 characters long")])
     image       = FileField("Image", validators=[FileRequired(), FileAllowed(app.config["ALLOWED_IMAGE_EXTENSIONS"], "Images only!")])
 
+# add customized validator for select field
+class BelongsToOtherFieldOption:
+    def __init__(self, table, belongs_to, foreign_key=None, message=None):
+        if not table:
+            raise AttributeError("""
+            BelongsToOtherFieldOption validator needs tha table parameter
+            """)
+        if not belongs_to:
+            raise AttributeError("""
+            BelongsToOtherFeildOption validator needs the belongs_to parameter
+            """)
+        self.table = table
+        self.belongs_to = belongs_to
+
+        if not foreign_key:
+            foreign_key = belongs_to + "_id"
+        if not message:
+            message = "Chosen option is not valid."
+
+        self.foreign_key = foreign_key
+        self.message = message
+
+    def __call__(self, form, field):
+        c = get_db().cursor()
+        try:
+            c.execute("""SELECT COUNT(*) FROM {} 
+                    WHERE id = ? AND {} = ?""".format(
+                        self.table,
+                        self.foreign_key
+                    ),
+                    (field.data, getattr(form, self.belongs_to).data)
+            )
+        except Exception as e:
+            raise AttributeError("""
+            Passed parameters are not correct. {}
+            """.format(e))
+        exists = c.fetchone()[0]
+        if not exists:
+            raise ValidationError(self.message)
+
+# rewrite to class BelongsToOtherFieldOption
+# def belongs_to_category(message):
+#     message = message
+
+#     def _belongs_to_category(form, field):
+#         c = get_db().cursor()
+#         c.execute("""SELECT COUNT(*) FROM subcategories 
+#                     WHERE id = ? AND category_id = ?""",
+#                     (field.data, form.category.data)
+#         )
+#         exists = c.fetchone()[0]
+#         if not exists:
+#             raise ValidationError(message)
+#     return _belongs_to_category
+
+
 class NewItemForm(ItemForm):
     category    = SelectField("Category", coerce=int)
-    subcategory = SelectField("Subcategory", coerce=int)
+    subcategory = SelectField("Subcategory", coerce=int, validators=[
+        BelongsToOtherFieldOption(table="subcategories", belongs_to="category", 
+            message="Subcategory does not belong to that category.")])
     submit      = SubmitField("Submit")
 
 class EditItemForm(ItemForm):
@@ -259,7 +317,7 @@ def new_item():
     form.subcategory.choices = subcategories
 
     # pdb.set_trace()
-    if form.validate_on_submit() and form.image.validate(form, extra_validators=(FileRequired(),)):
+    if form.validate_on_submit() and form.image.validate(form, extra_validators=(FileRequired,)):
         filename = save_image_upload(form.image)
 
         
@@ -309,4 +367,3 @@ def close_connection(exception):
     db = getattr(g, "_database", None)
     if db is not None:
         db.close()
-
