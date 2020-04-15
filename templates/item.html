@@ -19,7 +19,7 @@
             <div class="card-body">
                 <h3 class="card-title">{{ item.title }}</h3>
                 <h4>{{ "$%.2f" | format(item.price) }}</h4>
-                <p class="card-text">{{ item.description }}</p>
+                <p class="card-text">{{ item.description | safe }}</p>
                 <h4>
                     <div class="badge badge-secondary">{{ item.category }}</div> <br>
                     <div class="badge badge-secondary">{{ item.subcategory }}</div>

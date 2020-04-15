@@ -3,7 +3,7 @@ from flask_wtf import FlaskForm
 from flask_wtf.file import FileAllowed, FileRequired
 from wtforms import FileField, StringField, TextAreaField, SubmitField, SelectField, DecimalField
 from wtforms.validators import InputRequired, DataRequired, Length, ValidationError
-from werkzeug.utils import secure_filename
+from werkzeug.utils import secure_filename, escape, unescape
 import pdb
 import sqlite3
 import os
@@ -26,7 +26,7 @@ class ItemForm(FlaskForm):
     price       = DecimalField("Price")
     description = TextAreaField("Description", validators=[InputRequired("Input is required!"), 
                             DataRequired("Data is required!"), 
-                            Length(min=5, max=40, message="Input must be between 5 and 40 characters long")])
+                            Length(min=5, max=50, message="Input must be between 5 and 50 characters long")])
     image       = FileField("Image", validators=[FileRequired(), FileAllowed(app.config["ALLOWED_IMAGE_EXTENSIONS"], "Images only!")])
 
 # add customized validator for select field
@@ -284,8 +284,8 @@ def edit_item(item_id):
             conn.commit()
             flash("Item {} has been successfully updated.".format(form.title.data), "success")
             return redirect(url_for("item", item_id=item_id))
-        form.title.data       = item["title"]
-        form.description.data = item["description"]
+        form.title.data       = unescape(item["title"])
+        form.description.data = unescape(item["description"])
         form.price.data       = item["price"]
 
         if form.errors:
@@ -317,7 +317,7 @@ def new_item():
     form.subcategory.choices = subcategories
 
     # pdb.set_trace()
-    if form.validate_on_submit() and form.image.validate(form, extra_validators=(FileRequired,)):
+    if form.validate_on_submit() and form.image.validate(form, extra_validators=(FileRequired(),)):
         filename = save_image_upload(form.image)
 
         
@@ -331,8 +331,8 @@ def new_item():
                     (title, description, price, image, category_id, subcategory_id)
                         VALUES (?,?,?,?,?,?)""",
                         (
-                            form.title.data,
-                            form.description.data,
+                            escape(form.title.data),
+                            escape(form.description.data),
                             float(form.price.data),
                             filename,
                             form.category.data,

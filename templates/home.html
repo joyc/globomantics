@@ -42,7 +42,7 @@
                                 <a href="{{ url_for('item', item_id=item.id) }}">{{ item.title }}</a>
                             </h4>
                             <h5>{{ "$%.2f" | format(item.price) }}</h5>
-                            <p class="card-text">{{ item.description }}</p>
+                            <p class="card-text">{{ item.description | safe }}</p>
                         </div>
                         <div class="card-footer">
                             <small class="text-muted">
