@@ -1,5 +1,5 @@
 from flask import Flask, send_from_directory, render_template, request, redirect, url_for, g, flash
-from flask_wtf import FlaskForm
+from flask_wtf import FlaskForm, RecaptchaField
 from flask_wtf.file import FileAllowed, FileRequired
 from wtforms import FileField, StringField, TextAreaField, SubmitField, SelectField, DecimalField
 from wtforms.validators import InputRequired, DataRequired, Length, ValidationError
@@ -18,6 +18,8 @@ app.config["ALLOWED_IMAGE_EXTENSIONS"] = ["jpeg", "jpg", "png"]
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
 app.config["IMAGE_UPLOADS"] = os.path.join(basedir, "uploads")
 
+app.config["RECAPTCHA_PUBLIC_KEY"] = "6LcXV-oUAAAAAHAB6tOiH1jatJyqA_nPklyyyDUf"
+app.config["RECAPTCHA_PRIVATE_KEY"] = "6LcXV-oUAAAAAH1VHvzj39tdHLCivFtAjWF5YT-c"
 
 class ItemForm(FlaskForm):
     title       = StringField("Title", validators=[InputRequired("Input is required!"),
@@ -28,6 +30,7 @@ class ItemForm(FlaskForm):
                             DataRequired("Data is required!"), 
                             Length(min=5, max=50, message="Input must be between 5 and 50 characters long")])
     image       = FileField("Image", validators=[FileRequired(), FileAllowed(app.config["ALLOWED_IMAGE_EXTENSIONS"], "Images only!")])
+    recaptcha   = RecaptchaField()
 
 # add customized validator for select field
 class BelongsToOtherFieldOption:
