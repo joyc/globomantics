@@ -47,11 +47,49 @@ class PriceInput(Input):
 class PriceField(DecimalField):
     widget = PriceInput()
 
+# customed selectfield
+class CustomSelectField(SelectField):
+    def __init__(self, label=None, validators=None, coerce=int, choices=None, table=None, columns=[], allow_blank=False, **kwargs):
+        super(CustomSelectField, self).__init__(label, validators, coerce, choices, **kwargs)
+        self.allow_blank = allow_blank
+        if not table:
+            raise AttributeError("CustomSelectField does not work without the table parameter.")
+        if not len(columns):
+            raise AttributeError("CustomSelectField does not work without the list of columns.")
+        self.table = table
+        self.columns = columns
+
+    def iter_choices(self):
+        rows = self.get_rows()
+        for value, label in rows:
+            yield(value, label, self.coerce(value) == self.data)
+
+    def pre_validate(self, form):
+        """validate if the picked choice is one of the allowed choices and raise an error if it isn't."""
+        rows = self.get_rows() 
+        for v, _ in rows:
+            if self.data == v:
+                break
+            else:
+                raise ValueError("The chosen option does not exist.")
+
+    def get_rows(self):
+        """get select rows form database"""
+        c = get_db().cursor()
+        try:
+            c.execute("SELECT {}, {} FROM {}".format(self.columns[0], self.columns[1], self.table))
+        except:
+            raise AttributeError("Something went wrong.")
+        rows = c.fetchall()
+        if self.allow_blank:
+            rows.insert(0, (0, "---"))
+        return rows
+
 class ItemForm(FlaskForm):
     title       = StringField("Title", validators=[InputRequired("Input is required!"),
                             DataRequired("Data is required!"), 
                             Length(min=5, max=20, message="Input must be between 5 and 20 characters long")])
-    price       = PriceInput("Price")
+    price       = PriceField("Price")
     description = TextAreaField("Description", validators=[InputRequired("Input is required!"), 
                             DataRequired("Data is required!"), 
                             Length(min=5, max=50, message="Input must be between 5 and 50 characters long")])
@@ -114,10 +152,22 @@ class BelongsToOtherFieldOption:
 
 
 class NewItemForm(ItemForm):
-    category    = SelectField("Category", coerce=int)
-    subcategory = SelectField("Subcategory", coerce=int, validators=[
-        BelongsToOtherFieldOption(table="subcategories", belongs_to="category", 
-            message="Subcategory does not belong to that category.")])
+    category    = CustomSelectField(
+                        "Category", 
+                        coerce=int,
+                        table="categories",
+                        columns=["id", "name"]
+    )
+    subcategory = CustomSelectField(
+                        "Subcategory", 
+                        coerce=int,
+                        table="subcategories",
+                        columns=["id", "name"],
+                        validators=[
+                            BelongsToOtherFieldOption(table="subcategories", 
+                                                    belongs_to="category", 
+                                                    message="Subcategory does not belong to that category.")]
+    )
     recaptcha   = RecaptchaField()
     submit      = SubmitField("Submit")
 
@@ -130,8 +180,24 @@ class DeleteItemForm(FlaskForm):
 class FilterForm(FlaskForm):
     title       = StringField("Title", validators=[Length(max=20)])
     price       = SelectField("Price", coerce=int, choices=[(0, "---"), (1, "Max to Min"), (2, "Min to Max")])
-    category    = SelectField("Category", coerce=int)
-    subcategory = SelectField("Subcategory", coerce=int)
+    category    = CustomSelectField(
+                        "Category", 
+                        coerce=int,
+                        table="categories",
+                        columns=["id", "name"],
+                        allow_blank=True
+    )
+    subcategory = CustomSelectField(
+                        "Subcategory", 
+                        coerce=int,
+                        table="subcategories",
+                        columns=["id", "name"],
+                        allow_blank=True,
+                        validators=[
+                            BelongsToOtherFieldOption(table="subcategories", 
+                                                    belongs_to="category", 
+                                                    message="Subcategory does not belong to that category.")]
+    )
     submit      = SubmitField("Filter")
 
 
