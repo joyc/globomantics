@@ -22,3 +22,11 @@ textarea {
 .delete-form {
     display: inline;
 }
+
+.comment-error{
+    color: red;
+  }
+
+#content:invalid {
+box-shadow:none;
+}

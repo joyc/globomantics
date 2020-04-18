@@ -32,14 +32,30 @@
                 Product Reviews
             </div>
             <div class="card-body">
-                <p>Some comnent</p>
-                <smaill class="text-muted">Posted by Anonymous</smaill>
+                <form class="comment-form" action="{{ url_for('new_comment') }}" method="POST">
+                    {{ commentForm.hidden_tag() }}
+                    <div class="form-group">
+                    {{ commentForm.content.label }}
+                    {{ commentForm.content(class="form-control", rows="3") }}
+                    </div>
+                    {{ commentForm.submit(class="btn btn-primary") }}
+                    <span class="comment-error"></span>
+                </form>
+                <hr class="form-border">
+                {% if comments %}
+                {% for comment in comments %}
+                <p>{{ comment.content }}</p>
+                <small class="text-muted">Posted by Anonymous</small>
                 <hr>
-                <p>Some comnent</p>
-                <smaill class="text-muted">Posted by Anonymous</smaill>
-                <hr>
+                {% endfor %}
+                {% else %}
+                <p class="placeholder-comment">Be the first to comment on this item.</p>
+                {% endif %}
             </div>
         </div>
     </div>
 </div>
 {% endblock content %}
+{% block javascript %}
+<script src="{{ url_for("static", filename="js/comment.js") }}"></script>
+{% endblock %}
