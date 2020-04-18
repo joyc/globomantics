@@ -383,8 +383,8 @@ def edit_item(item_id):
         form.description.data = unescape(item["description"])
         form.price.data       = item["price"]
 
-        if form.errors:
-            flash("{}".format(form.errors), "danger")
+        # if form.errors:
+        #     flash("{}".format(form.errors), "danger")
 
         return render_template("edit_item.html", item=item, form=form)
     return redirect(url_for("home"))
@@ -438,8 +438,8 @@ def new_item():
         # Redirect to top page
         flash("Item {} has been successfully submitted".format(request.form.get("title")), "success")
         return redirect(url_for("home"))
-    if form.errors:
-        flash("{}".format(form.errors), "danger")
+    # if form.errors:
+    #     flash("{}".format(form.errors), "danger")
     return render_template("new_item.html", form=form)
 
 def get_db():
