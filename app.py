@@ -1,4 +1,4 @@
-from flask import Flask, send_from_directory, render_template, request, redirect, url_for, g, flash
+from flask import Flask, jsonify, send_from_directory, render_template, request, redirect, url_for, g, flash
 from flask_wtf import FlaskForm, RecaptchaField
 from flask_wtf.file import FileAllowed, FileRequired
 from wtforms import FileField, StringField, TextAreaField, SubmitField, SelectField, DecimalField
@@ -213,7 +213,7 @@ def home():
     categories.insert(0, (0, "---"))
     form.category.choices = categories
 
-    c.execute("SELECT id, name FROM subcategories WHERE category_id = ?", (1,))
+    c.execute("SELECT id, name FROM subcategories")
     subcategories = c.fetchall()
     subcategories.insert(0, (0, "---"))
     form.subcategory.choices = subcategories
@@ -279,6 +279,15 @@ def home():
 # @app.route("/static/<filename>")
 # def static(filename):
 #     return send_from_directory("static", filename)
+
+@app.route("/category/<int:category_id>")
+def category(category_id):
+    c = get_db().cursor()
+    c.execute("""SELECT id, name FROM subcategories
+                 WHERE category_id = ?""", (category_id,)
+    )
+    subcategories = c.fetchall()
+    return jsonify(subcategories=subcategories)
 
 @app.route("/item/<int:item_id>/delete", methods=["POST"])
 def delete_item(item_id):
@@ -404,18 +413,13 @@ def new_item():
     # [(1, 'Food'), (2, 'Technology'), (3, 'Books')]
     form.category.choices = categories
 
-    c.execute("""SELECT id, name FROM subcategories 
-                    WHERE category_id = ?""",
-                    (1,)
-    )
+    c.execute("SELECT id, name FROM subcategories")
     subcategories = c.fetchall()
     form.subcategory.choices = subcategories
 
     # pdb.set_trace()
     if form.validate_on_submit() and form.image.validate(form, extra_validators=(FileRequired(),)):
         filename = save_image_upload(form.image)
-
-        
 
         # Process the from data
         # print("From data:")
